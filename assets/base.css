@@ -2,7 +2,7 @@
   --primary: #ffffff;
   --primary-2: #f1f3f5;
   --secondary: var(--cyan);
-  --secondary-2: #111;
+  --secondary-2: rgb(10, 73, 102);
   --selection: var(--cyan);
 
   --text-base: #011c36;
