@@ -1,0 +1,26 @@
+{
+  "title": "Кафе Мушля у Житомирі (Mushlya Bar)",
+  "titleTemplate": "%s - Мушля",
+  "description": "Mushlya Bar з морепродуктами",
+  "openGraph": {
+    "title": "Кафе Мушля у Житомирі (Mushlya Bar)",
+    "description": "Mushlya Bar з морепродуктами",
+    "type": "website",
+    "locale": "en_IE",
+    "url": "https://nextjs.org/commerce",
+    "site_name": "Mushlya Bar з морепродуктами",
+    "images": [
+      {
+        "url": "/card.png",
+        "width": 800,
+        "height": 600,
+        "alt": "Mushlya Bar з морепродуктами"
+      }
+    ]
+  },
+  "twitter": {
+    "handle": "@nextjs",
+    "site": "@nextjs",
+    "cardType": "summary_large_image"
+  }
+}
