@@ -84,10 +84,10 @@ export default function Home({
           <ProductCard key={product.id} product={product} variant="slim" />
         ))}
       </Marquee>
-      <HomeAllProductsGrid
+      {/* <HomeAllProductsGrid
         products={products}
         categories={categories}
-      />
+      /> */}
     </>
   )
 }

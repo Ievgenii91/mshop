@@ -244,7 +244,8 @@ export default function Checkout() {
               value={formData?.phone}
               mask="+38(099) 999 99 99"
               onChange={(e) => handleChange(e, 'phone')}
-              beforeMaskedStateChange={beforeChange}
+              // @ts-ignore
+              beforeMaskedValueChange={beforeChange}
             >
               {(inputProps: unknown) => <Input {...inputProps} type="tel" />}
             </InputMask>
