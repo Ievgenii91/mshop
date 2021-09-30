@@ -8,6 +8,9 @@ import { CartItem } from '@components/cart';
 import React, { useCallback, useEffect, useState } from 'react';
 import useCheckout from '@framework/cart/use-checkout';
 import { Product as CommerceProduct } from '@commerce/types/product';
+import ProductCard from '@components/product/ProductCard';
+import { GetStaticPropsContext } from 'next';
+import commerce from '@lib/api/commerce';
 
 const PACKAGING_PRICE = 5;
 const DELIVER_PRICE = 33;
@@ -20,7 +23,31 @@ type Order = {
 	id: string;
 	products: Partial<Product[]>;
 };
-export default function Checkout() {
+
+export async function getStaticProps({
+	params,
+	locale,
+	locales,
+	preview,
+}: GetStaticPropsContext<{ slug: string }>) {
+	const config = { locale, locales };
+
+	const allProductsPromise = commerce.getAllProducts({
+		variables: { first: 4 },
+		config,
+		preview,
+	});
+	const { products: relatedProducts } = await allProductsPromise;
+
+	return {
+		props: {
+			relatedProducts,
+		},
+		revalidate: 200,
+	};
+}
+
+export default function Checkout({ relatedProducts }: any) {
 	const [success, setSuccess] = useState<boolean>(false);
 	const [error, setError] = useState<boolean>(false);
 	const [order, setOrder] = useState<Order>();
@@ -236,12 +263,32 @@ export default function Checkout() {
 						</ul>
 						<div className="my-6">
 							<Text>Рекомендуємо додати до замовлення</Text>
-							<div className="flex py-6 space-x-6">
+							{/* <div className="flex py-6 space-x-6">
 								{[1, 2, 3, 4, 5, 6].map((x) => (
 									<div
 										key={x}
 										className="border border-accents-3 w-full h-24 bg-accents-2 bg-opacity-50 transform cursor-pointer hover:scale-110 duration-75"
 									/>
+								))}
+							</div> */}
+							<div className="flex py-6 space-x-6">
+								{relatedProducts.map((p: Product) => (
+									<div
+										key={p.path}
+										className="border border-accents-3 w-full bg-accents-2 bg-opacity-50 transform cursor-pointer hover:scale-110 duration-75"
+									>
+										<ProductCard
+											noNameTag
+											product={p}
+											key={p.path}
+											variant="simple"
+											className="animated fadeIn"
+											imgProps={{
+												width: 75,
+												height: 75,
+											}}
+										/>
+									</div>
 								))}
 							</div>
 						</div>
