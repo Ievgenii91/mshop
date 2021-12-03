@@ -5,14 +5,13 @@ import { Button, Input, Text } from '@components/ui';
 import InputMask from 'react-input-mask';
 import { Bag, Cross, Check, MapPin, CreditCard } from '@components/icons';
 import { CartItem } from '@components/cart';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useCheckout from '@framework/cart/use-checkout';
 import { Product as CommerceProduct } from '@commerce/types/product';
 import ProductCard from '@components/product/ProductCard';
 import { GetStaticPropsContext } from 'next';
 import commerce from '@lib/api/commerce';
 
-const PACKAGING_PRICE = 5;
 const DELIVER_PRICE = 33;
 type BaseProduct = {
 	count: number;
@@ -52,7 +51,11 @@ export default function Checkout({ relatedProducts }: any) {
 	const [error, setError] = useState<boolean>(false);
 	const [order, setOrder] = useState<Order>();
 	const [deliver, setDeliver] = useState<boolean>(false);
+	const [cardPaymentMethod, setCardPaymentMethod] = useState<boolean>(false);
 	const [canOrder, setCanOrder] = useState<boolean>(false);
+	const [signature, setSignature] = useState<string>('');
+	const [base64data, setBase64data] = useState<string>('');
+	const form = useRef(null);
 	const postOrder = useCheckout();
 	const [formData, setFormData] = useState<
 		Partial<{
@@ -68,20 +71,23 @@ export default function Checkout({ relatedProducts }: any) {
 		address: '',
 	});
 
-	// useEffect(() => {
-	//   const dataFromLocalStorage = localStorage.getItem('form-data')
-	//   if (dataFromLocalStorage) {
-	//     console.log('effect', dataFromLocalStorage)
-	//     setFormData(JSON.parse(dataFromLocalStorage))
-	//   }
-	//   return () => {
-	//     console.log('unmount')
-	//   }
-	// }, [])
-
 	const { data, isLoading, isEmpty } = useCart();
 
 	const showForm = !isEmpty && !success;
+
+	useEffect(() => {
+		if (base64data && signature) {
+			// localStorage.clear();
+			// localStorage.setItem('order', JSON.stringify({
+			//   phone,
+			//   clientName,
+			//   note,
+			//   date: new Date().getTime() + '',
+			//   products: order.selectedItems,
+			// }))
+			(form.current as any).submit();
+		}
+	}, [base64data, signature]);
 
 	const { price: subTotal } = usePrice(
 		data && {
@@ -95,20 +101,6 @@ export default function Checkout({ relatedProducts }: any) {
 			currencyCode: data.currency.code,
 		}
 	);
-	const getPackagingPrice = useCallback(() => {
-		let calculatedValue = 0;
-		data?.lineItems.forEach((v) => {
-			calculatedValue += v.quantity * PACKAGING_PRICE;
-		});
-		return calculatedValue;
-	}, [data]);
-
-	const { price: packagingPrice } = usePrice(
-		data && {
-			amount: getPackagingPrice(),
-			currencyCode: data.currency.code,
-		}
-	);
 
 	const { price: deliverPrice } = usePrice(
 		data && {
@@ -119,7 +111,45 @@ export default function Checkout({ relatedProducts }: any) {
 
 	const checkout = useCallback(async () => {
 		if (!canOrder) return;
-		const packagingPrice = getPackagingPrice();
+		if (cardPaymentMethod) {
+			try {
+				// const updatedUrl = new URL(
+				// 	'api/v1/payment',
+				// 	process.env.NEXT_PUBLIC_API_URL
+				// );
+				// updatedUrl.searchParams.set(
+				// 	'clientId',
+				// 	process.env.NEXT_PUBLIC_CLIENT_ID + ''
+				// );
+
+				// const response = await fetch(
+				// 	updatedUrl.href + '?clientId=' + process.env.NEXT_PUBLIC_CLIENT_ID,
+				// 	{
+				// 		method: 'POST',
+				// 		body: JSON.stringify({
+				// 			amount: 10,
+				// 			description: 'website payment',
+				// 		}),
+				// 	}
+				// );
+				const response = await fetch(
+					'/api/payment',
+					{
+						method: 'POST',
+						body: JSON.stringify({
+							amount: 10,
+							description: 'website payment',
+						}),
+					}
+				);
+				const { data, signature } = await response.json();
+				setBase64data(data);
+				setSignature(signature);
+			} catch (e) {
+				console.error(e);
+				return;
+			}
+		}
 		const body = {
 			initiator: 'site',
 			phone: formData?.phone,
@@ -133,14 +163,12 @@ export default function Checkout({ relatedProducts }: any) {
 			})),
 			address: formData?.address,
 			deliverPrice: deliver ? DELIVER_PRICE : 0,
-			packagingPrice,
 			date: new Date().toISOString(),
 		};
 		let res = null;
 		try {
 			res = await postOrder(body);
 		} catch (e) {
-			console.log(e, '@@@');
 			setSuccess(false);
 		}
 
@@ -151,10 +179,17 @@ export default function Checkout({ relatedProducts }: any) {
 			setOrder(res);
 			window.scrollTo({ top: 0, behavior: 'smooth' });
 			localStorage.removeItem('bc_cartId');
+			if (localStorage.getItem('mstore_orders')) {
+				const orders = localStorage.getItem('mstore_orders')?.split(',');
+				orders?.push(res.id);
+				localStorage.setItem('mstore_orders', orders?.join(',') + '');
+			} else {
+				localStorage.setItem('mstore_orders', res.id);
+			}
 		}
 	}, [
 		canOrder,
-		getPackagingPrice,
+		cardPaymentMethod,
 		formData?.phone,
 		formData?.name,
 		formData?.address,
@@ -202,8 +237,18 @@ export default function Checkout({ relatedProducts }: any) {
 		[formData]
 	);
 
+	const pay = () => {};
+
 	return (
 		<div className="grid lg:grid-cols-12 w-full max-w-7xl mx-auto">
+			<form
+				ref={form}
+				method="POST"
+				action="https://www.liqpay.ua/api/3/checkout"
+			>
+				<input type="hidden" name="data" value={base64data} />
+				<input type="hidden" name="signature" value={signature} />
+			</form>
 			<div className={isEmpty || success ? 'lg:col-span-12' : 'lg:col-span-8'}>
 				{isLoading || isEmpty ? (
 					<div className="flex-1 px-12 py-24 flex flex-col justify-center items-center ">
@@ -326,7 +371,7 @@ export default function Checkout({ relatedProducts }: any) {
 								'rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
 							}
 							onClick={() => {
-								setDeliver(true);
+								setDeliver((v) => !v);
 							}}
 						>
 							<div className="mr-5">
@@ -352,7 +397,7 @@ export default function Checkout({ relatedProducts }: any) {
 								' rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
 							}
 							onClick={() => {
-								setDeliver(false);
+								setDeliver((v) => !v);
 							}}
 						>
 							<div className="mr-5">
@@ -363,23 +408,29 @@ export default function Checkout({ relatedProducts }: any) {
 							</div>
 						</div>
 						<div className="border-t border-accents-2 mb-4 mt-4"></div>
-						{/* <div className="rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4">
-              <div className="mr-5">
-                <CreditCard />
-              </div>
-              <div className="text-sm text-center font-medium">
-                <span className="uppercase">Оплатити картою</span>
-              </div>
-            </div> */}
+						<div
+							className={
+								(cardPaymentMethod
+									? 'border-cyan text-cyan bg-cyan-light'
+									: '') +
+								' rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
+							}
+							onClick={() => {
+								setCardPaymentMethod((v) => !v);
+							}}
+						>
+							<div className="mr-5">
+								<CreditCard />
+							</div>
+							<div className="text-sm text-center font-medium">
+								<span className="uppercase">Оплатити картою</span>
+							</div>
+						</div>
 						<div className="border-t border-accents-2">
 							<ul className="py-3">
 								<li className="flex justify-between py-1">
 									<span>Сума</span>
 									<span>{subTotal}</span>
-								</li>
-								<li className="flex justify-between py-1">
-									<span>Пакування у закладі</span>
-									<span>{packagingPrice}</span>
 								</li>
 								{deliver && (
 									<li className="flex justify-between py-1">

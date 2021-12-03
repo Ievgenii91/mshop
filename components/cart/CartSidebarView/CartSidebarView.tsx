@@ -11,8 +11,8 @@ import usePrice from '@framework/product/use-price'
 import SidebarLayout from '@components/common/SidebarLayout'
 
 // TODO move to env
-const PACKAGING_PRICE = 5
-const DELIVER_PRICE = 33
+// const PACKAGING_PRICE = 5
+// const DELIVER_PRICE = 33
 
 const CartSidebarView: FC = () => {
   const { closeSidebar, setSidebarView } = useUI()
@@ -31,23 +31,23 @@ const CartSidebarView: FC = () => {
     }
   )
 
-  const getPackagingPrice = useCallback(() => {
-    let calculatedValue = 0
-    data?.lineItems.forEach((v) => {
-      calculatedValue += v.quantity * PACKAGING_PRICE
-    })
-    return calculatedValue
-  }, [data])
+  // const getPackagingPrice = useCallback(() => {
+  //   let calculatedValue = 0
+  //   data?.lineItems.forEach((v) => {
+  //     calculatedValue += v.quantity * PACKAGING_PRICE
+  //   })
+  //   return calculatedValue
+  // }, [data])
 
-  const { price: packagingPrice } = usePrice(
-    data && {
-      amount: getPackagingPrice(),
-      currencyCode: data.currency.code,
-    }
-  )
+  // const { price: packagingPrice } = usePrice(
+  //   data && {
+  //     amount: getPackagingPrice(),
+  //     currencyCode: data.currency.code,
+  //   }
+  // )
   
   const handleClose = () => closeSidebar()
-  const goToCheckout = () => setSidebarView('CHECKOUT_VIEW')
+  // const goToCheckout = () => setSidebarView('CHECKOUT_VIEW')
 
   const error = null
   const success = null
@@ -114,10 +114,10 @@ const CartSidebarView: FC = () => {
                 <span>Страви</span>
                 <span>{subTotal}</span>
               </li>
-              <li className="flex justify-between py-1">
+              {/* <li className="flex justify-between py-1">
                 <span>Упаковка</span>
                 <span>{packagingPrice}</span>
-              </li>
+              </li> */}
             </ul>
             <div className="flex justify-between border-t border-accent-2 py-3 font-bold mb-2">
               <span>Всього до сплати</span>

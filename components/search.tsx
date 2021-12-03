@@ -112,9 +112,9 @@ export default function Search({ categories }: SearchPropsType) {
                         </a>
                       </Link>
                     </li> */}
-                    {categories.map((cat: any) => (
+                    {categories.map((cat: any, index: number) => (
                       <li
-                        key={cat.path}
+                        key={index}
                         className={cn(
                           'block text-sm leading-5 text-accent-4 hover:bg-accent-1 lg:hover:bg-transparent hover:text-accent-8 focus:outline-none focus:bg-accent-1 focus:text-accent-8',
                           {
@@ -149,9 +149,9 @@ export default function Search({ categories }: SearchPropsType) {
         <div className="col-span-10 order-2 lg:order-none">
           {(query || activeCategory) && (
             <div className="mb-12 transition ease-in duration-75">
-              {data ? (
+              {!!data ? (
                 <>
-                  <span
+                  {/* <span
                     className={cn('animated', {
                       fadeIn: data.found,
                       hidden: !data.found,
@@ -163,7 +163,7 @@ export default function Search({ categories }: SearchPropsType) {
                         для "<strong></strong>"
                       </>
                     )}
-                  </span>
+                  </span> */}
                   <span
                     className={cn('animated', {
                       fadeIn: !data.found,
@@ -172,7 +172,7 @@ export default function Search({ categories }: SearchPropsType) {
                   >
                     {query ? (
                       <>
-                        Нажаль не можемо нічого знайти по "<strong></strong>"
+                        Нажаль не можемо нічого знайти
                       </>
                     ) : (
                       <>Для даної категорії немає страв</>
@@ -188,12 +188,12 @@ export default function Search({ categories }: SearchPropsType) {
               )}
             </div>
           )}
-          {data ? (
+          {!!data ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {products.map((product: Product) => (
+              {products.map((product: Product, index: number) => (
                 <ProductCard
                   variant="simple"
-                  key={product.id}
+                  key={index}
                   className="animated fadeIn"
                   product={product}
                   imgProps={{
