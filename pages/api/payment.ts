@@ -29,8 +29,8 @@ export default async function handler(req: any, res: any) {
 		currency: 'UAH',
 		language: 'uk',
 		description,
-		result_url: host + '/done',
-		// server_url: host + '/api/result',
+		result_url: host + '/checkout',
+		server_url: host + '/api/result',
 		order_id: new Date().getTime() + '',
 	};
 	try {

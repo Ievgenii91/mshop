@@ -111,59 +111,26 @@ export default function Checkout({ relatedProducts }: any) {
 
 	const checkout = useCallback(async () => {
 		if (!canOrder) return;
-		if (cardPaymentMethod) {
-			try {
-				// const updatedUrl = new URL(
-				// 	'api/v1/payment',
-				// 	process.env.NEXT_PUBLIC_API_URL
-				// );
-				// updatedUrl.searchParams.set(
-				// 	'clientId',
-				// 	process.env.NEXT_PUBLIC_CLIENT_ID + ''
-				// );
-
-				// const response = await fetch(
-				// 	updatedUrl.href + '?clientId=' + process.env.NEXT_PUBLIC_CLIENT_ID,
-				// 	{
-				// 		method: 'POST',
-				// 		body: JSON.stringify({
-				// 			amount: 10,
-				// 			description: 'website payment',
-				// 		}),
-				// 	}
-				// );
-				const response = await fetch(
-					'/api/payment',
-					{
-						method: 'POST',
-						body: JSON.stringify({
-							amount: 10,
-							description: 'website payment',
-						}),
-					}
-				);
-				const { data, signature } = await response.json();
-				setBase64data(data);
-				setSignature(signature);
-			} catch (e) {
-				console.error(e);
-				return;
-			}
-		}
+		const products = data?.lineItems.map((v) => ({
+			id: v.id,
+			name: v.name,
+			price: v.variant.price,
+			count: v.quantity,
+			total: v.variant.price * v.quantity,
+		}));
+		let amount = 0;
+		products?.forEach((v) => {
+			amount += v.total;
+		});
 		const body = {
 			initiator: 'site',
 			phone: formData?.phone,
 			name: formData?.name,
-			products: data?.lineItems.map((v) => ({
-				id: v.id,
-				name: v.name,
-				price: v.variant.price,
-				count: v.quantity,
-				total: v.variant.price * v.quantity,
-			})),
+			products,
 			address: formData?.address,
 			deliverPrice: deliver ? DELIVER_PRICE : 0,
 			date: new Date().toISOString(),
+			blocked: cardPaymentMethod,
 		};
 		let res = null;
 		try {
@@ -185,6 +152,25 @@ export default function Checkout({ relatedProducts }: any) {
 				localStorage.setItem('mstore_orders', orders?.join(',') + '');
 			} else {
 				localStorage.setItem('mstore_orders', res.id);
+			}
+
+			if (cardPaymentMethod) {
+				try {
+					const response = await fetch('/api/payment', {
+						method: 'POST',
+						body: JSON.stringify({
+							amount,
+							description: 'оплата за морепродукти',
+							order_id: res.id,
+						}),
+					});
+					const { data, signature } = await response.json();
+					setBase64data(data);
+					setSignature(signature);
+				} catch (e) {
+					console.error(e);
+					return;
+				}
 			}
 		}
 	}, [
@@ -237,10 +223,8 @@ export default function Checkout({ relatedProducts }: any) {
 		[formData]
 	);
 
-	const pay = () => {};
-
 	return (
-		<div className="grid lg:grid-cols-12 w-full max-w-7xl mx-auto">
+		<>
 			<form
 				ref={form}
 				method="POST"
@@ -249,66 +233,69 @@ export default function Checkout({ relatedProducts }: any) {
 				<input type="hidden" name="data" value={base64data} />
 				<input type="hidden" name="signature" value={signature} />
 			</form>
-			<div className={isEmpty || success ? 'lg:col-span-12' : 'lg:col-span-8'}>
-				{isLoading || isEmpty ? (
-					<div className="flex-1 px-12 py-24 flex flex-col justify-center items-center ">
-						<span className="border border-dashed border-secondary flex items-center justify-center w-16 h-16 bg-primary p-12 rounded-lg text-primary">
-							<Bag className="absolute" />
-						</span>
-						<h2 className="pt-6 text-2xl font-bold tracking-wide text-center">
-							Упс... здається, тут пусто.
-						</h2>
-						<p className="text-accents-6 px-10 text-center pt-2">
-							Устрички, ігристе, роли, все чого душа бажає...
-						</p>
-					</div>
-				) : error ? (
-					<div className="flex-1 px-12 flex flex-col justify-center items-center">
-						<span className="border border-white rounded-full flex items-center justify-center w-16 h-16">
-							<Cross width={24} height={24} onClick={() => setError(false)} />
-						</span>
-						<h2 className="pt-6 text-xl font-light text-center">
-							Ми не змогли опрацювати покупку. Будь ласка перевірте свою
-							платіжну інформацію.
-						</h2>
-					</div>
-				) : success ? (
-					<div className="flex-1 px-12 py-24 flex flex-col justify-center items-center">
-						<span className="border border-white rounded-full flex items-center justify-center w-16 h-16">
-							<Check />
-						</span>
-						<h2 className="pt-6 text-xl font-light text-center">
-							Дякуємо за ваше замовлення.
-						</h2>
-						<p>
-							Номер вашого замовлення - <b>{order?.id}</b>
-							<p>{deliver && 'Очікуйтее доставку упродовж години'}</p>
-						</p>
-						<div className="mt-4">
-							{order &&
-								order.products.map((v, index) => (
-									<div key={index + 'e'}>
-										* {v?.name} - {v?.total}
-									</div>
-								))}
+			<div className="grid lg:grid-cols-12 w-full max-w-7xl mx-auto">
+				<div
+					className={isEmpty || success ? 'lg:col-span-12' : 'lg:col-span-8'}
+				>
+					{isLoading || isEmpty ? (
+						<div className="flex-1 px-12 py-24 flex flex-col justify-center items-center ">
+							<span className="border border-dashed border-secondary flex items-center justify-center w-16 h-16 bg-primary p-12 rounded-lg text-primary">
+								<Bag className="absolute" />
+							</span>
+							<h2 className="pt-6 text-2xl font-bold tracking-wide text-center">
+								Упс... здається, тут пусто.
+							</h2>
+							<p className="text-accents-6 px-10 text-center pt-2">
+								Устрички, ігристе, роли, все чого душа бажає...
+							</p>
 						</div>
+					) : error ? (
+						<div className="flex-1 px-12 flex flex-col justify-center items-center">
+							<span className="border border-white rounded-full flex items-center justify-center w-16 h-16">
+								<Cross width={24} height={24} onClick={() => setError(false)} />
+							</span>
+							<h2 className="pt-6 text-xl font-light text-center">
+								Ми не змогли опрацювати покупку. Будь ласка перевірте свою
+								платіжну інформацію.
+							</h2>
+						</div>
+					) : success ? (
+						<div className="flex-1 px-12 py-24 flex flex-col justify-center items-center">
+							<span className="border border-white rounded-full flex items-center justify-center w-16 h-16">
+								<Check />
+							</span>
+							<h2 className="pt-6 text-xl font-light text-center">
+								Дякуємо за ваше замовлення.
+							</h2>
+							<p>
+								Номер вашого замовлення - <b>{order?.id}</b>
+								<p>{deliver && 'Очікуйтее доставку упродовж години'}</p>
+							</p>
+							<div className="mt-4">
+								{order &&
+									order.products.map((v, index) => (
+										<div key={index + 'e'}>
+											* {v?.name} - {v?.total}
+										</div>
+									))}
+							</div>
 
-						<div></div>
-					</div>
-				) : (
-					<div className="px-4 sm:px-6 flex-1">
-						{/* <Text variant="pageHeading">Замовлення</Text> */}
-						<Text variant="sectionHeading">
-							Перегляньте правильність вашого замовлення
-						</Text>
-						<ul className="py-6 space-y-6 sm:py-0 sm:space-y-0 sm:divide-y sm:divide-accents-2 border-b border-accents-2">
-							{data!.lineItems.map((item) => (
-								<CartItem key={item.id} item={item} currencyCode={'UAH'} />
-							))}
-						</ul>
-						<div className="my-6">
-							<Text>Рекомендуємо додати до замовлення</Text>
-							{/* <div className="flex py-6 space-x-6">
+							<div></div>
+						</div>
+					) : (
+						<div className="px-4 sm:px-6 flex-1">
+							{/* <Text variant="pageHeading">Замовлення</Text> */}
+							<Text variant="sectionHeading">
+								Перегляньте правильність вашого замовлення
+							</Text>
+							<ul className="py-6 space-y-6 sm:py-0 sm:space-y-0 sm:divide-y sm:divide-accents-2 border-b border-accents-2">
+								{data!.lineItems.map((item) => (
+									<CartItem key={item.id} item={item} currencyCode={'UAH'} />
+								))}
+							</ul>
+							<div className="my-6">
+								<Text>Рекомендуємо додати до замовлення</Text>
+								{/* <div className="flex py-6 space-x-6">
 								{[1, 2, 3, 4, 5, 6].map((x) => (
 									<div
 										key={x}
@@ -316,156 +303,157 @@ export default function Checkout({ relatedProducts }: any) {
 									/>
 								))}
 							</div> */}
-							<div className="flex py-6 space-x-6">
-								{relatedProducts.map((p: Product) => (
-									<div
-										key={p.path}
-										className="border border-accents-3 w-full bg-accents-2 bg-opacity-50 transform cursor-pointer hover:scale-110 duration-75"
-									>
-										<ProductCard
-											noNameTag
-											product={p}
+								<div className="flex py-6 space-x-6">
+									{relatedProducts.map((p: Product) => (
+										<div
 											key={p.path}
-											variant="simple"
-											className="animated fadeIn"
-											imgProps={{
-												width: 75,
-												height: 75,
-											}}
-										/>
-									</div>
-								))}
+											className="border border-accents-3 w-full bg-accents-2 bg-opacity-50 transform cursor-pointer hover:scale-110 duration-75"
+										>
+											<ProductCard
+												noNameTag
+												product={p}
+												key={p.path}
+												variant="simple"
+												className="animated fadeIn"
+												imgProps={{
+													width: 75,
+													height: 75,
+												}}
+											/>
+										</div>
+									))}
+								</div>
+							</div>
+						</div>
+					)}
+				</div>
+				{showForm && (
+					<div className="lg:col-span-4">
+						<div className="flex-shrink-0 px-4 sm:px-6 mt-2">
+							<Text className="mt-4 pb-1">Ім'я</Text>
+							<Input
+								value={formData?.name}
+								onChange={(e) => handleChange(e, 'name')}
+							></Input>
+							<Text className="mt-4 pb-1">Телефон</Text>
+							<InputMask
+								value={formData?.phone}
+								mask="+38(099) 999 99 99"
+								onChange={(e) => handleChange(e, 'phone')}
+								// @ts-ignore
+								beforeMaskedValueChange={beforeChange}
+							>
+								{(inputProps: unknown) => <Input {...inputProps} type="tel" />}
+							</InputMask>
+							<Text className="mt-4 pb-1">Додаткові побажання</Text>
+							<Input
+								value={formData?.description}
+								onChange={(e) => handleChange(e, 'description')}
+							></Input>
+						</div>
+						<div className="flex-shrink-0 px-4 py-8 sm:px-6">
+							<div
+								className={
+									(deliver ? 'border-cyan text-cyan bg-cyan-light ' : '') +
+									'rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
+								}
+								onClick={() => {
+									setDeliver((v) => !v);
+								}}
+							>
+								<div className="mr-5">
+									<MapPin />
+								</div>
+								<div className="text-sm text-center font-medium">
+									<span className="uppercase">Вказати адресу</span>
+								</div>
+							</div>
+							{deliver && (
+								<div className="mb-4">
+									<Text className="mt-4 pb-1">Куди доставити?</Text>
+									<Input
+										autoFocus
+										value={formData?.address}
+										onChange={(e) => handleChange(e, 'address')}
+									></Input>
+								</div>
+							)}
+							<div
+								className={
+									(!deliver ? 'border-cyan text-cyan bg-cyan-light' : '') +
+									' rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
+								}
+								onClick={() => {
+									setDeliver((v) => !v);
+								}}
+							>
+								<div className="mr-5">
+									<Bag />
+								</div>
+								<div className="text-sm text-center font-medium">
+									<span className="uppercase">Заберу сам</span>
+								</div>
+							</div>
+							<div className="border-t border-accents-2 mb-4 mt-4"></div>
+							<div
+								className={
+									(cardPaymentMethod
+										? 'border-cyan text-cyan bg-cyan-light'
+										: '') +
+									' rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
+								}
+								onClick={() => {
+									setCardPaymentMethod((v) => !v);
+								}}
+							>
+								<div className="mr-5">
+									<CreditCard />
+								</div>
+								<div className="text-sm text-center font-medium">
+									<span className="uppercase">Оплатити картою</span>
+								</div>
+							</div>
+							<div className="border-t border-accents-2">
+								<ul className="py-3">
+									<li className="flex justify-between py-1">
+										<span>Сума</span>
+										<span>{subTotal}</span>
+									</li>
+									{deliver && (
+										<li className="flex justify-between py-1">
+											<span>Вартість доставки</span>
+											<span className="tracking-wide">{deliverPrice}</span>
+										</li>
+									)}
+								</ul>
+								<div className="flex justify-between border-t border-accents-2 py-3 font-bold mb-10">
+									<span>Всього</span>
+									<span>{total}</span>
+								</div>
+							</div>
+							<div className="flex flex-row justify-end">
+								<div className="w-full lg:w-72">
+									{isEmpty ? (
+										<Button href="/" Component="a" width="100%">
+											Хочу ще чогось
+										</Button>
+									) : (
+										<Button
+											onClick={checkout}
+											disabled={!canOrder}
+											Component="a"
+											width="100%"
+										>
+											Замовити
+										</Button>
+									)}
+								</div>
 							</div>
 						</div>
 					</div>
 				)}
 			</div>
-			{showForm && (
-				<div className="lg:col-span-4">
-					<div className="flex-shrink-0 px-4 sm:px-6 mt-2">
-						<Text className="mt-4 pb-1">Ім'я</Text>
-						<Input
-							value={formData?.name}
-							onChange={(e) => handleChange(e, 'name')}
-						></Input>
-						<Text className="mt-4 pb-1">Телефон</Text>
-						<InputMask
-							value={formData?.phone}
-							mask="+38(099) 999 99 99"
-							onChange={(e) => handleChange(e, 'phone')}
-							// @ts-ignore
-							beforeMaskedValueChange={beforeChange}
-						>
-							{(inputProps: unknown) => <Input {...inputProps} type="tel" />}
-						</InputMask>
-						<Text className="mt-4 pb-1">Додаткові побажання</Text>
-						<Input
-							value={formData?.description}
-							onChange={(e) => handleChange(e, 'description')}
-						></Input>
-					</div>
-					<div className="flex-shrink-0 px-4 py-8 sm:px-6">
-						<div
-							className={
-								(deliver ? 'border-cyan text-cyan bg-cyan-light ' : '') +
-								'rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
-							}
-							onClick={() => {
-								setDeliver((v) => !v);
-							}}
-						>
-							<div className="mr-5">
-								<MapPin />
-							</div>
-							<div className="text-sm text-center font-medium">
-								<span className="uppercase">Вказати адресу</span>
-							</div>
-						</div>
-						{deliver && (
-							<div className="mb-4">
-								<Text className="mt-4 pb-1">Куди доставити?</Text>
-								<Input
-									autoFocus
-									value={formData?.address}
-									onChange={(e) => handleChange(e, 'address')}
-								></Input>
-							</div>
-						)}
-						<div
-							className={
-								(!deliver ? 'border-cyan text-cyan bg-cyan-light' : '') +
-								' rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
-							}
-							onClick={() => {
-								setDeliver((v) => !v);
-							}}
-						>
-							<div className="mr-5">
-								<Bag />
-							</div>
-							<div className="text-sm text-center font-medium">
-								<span className="uppercase">Заберу сам</span>
-							</div>
-						</div>
-						<div className="border-t border-accents-2 mb-4 mt-4"></div>
-						<div
-							className={
-								(cardPaymentMethod
-									? 'border-cyan text-cyan bg-cyan-light'
-									: '') +
-								' rounded-md border border-accents-2 px-6 py-6 mb-4 text-center flex items-center justify-center cursor-pointer hover:border-accents-4'
-							}
-							onClick={() => {
-								setCardPaymentMethod((v) => !v);
-							}}
-						>
-							<div className="mr-5">
-								<CreditCard />
-							</div>
-							<div className="text-sm text-center font-medium">
-								<span className="uppercase">Оплатити картою</span>
-							</div>
-						</div>
-						<div className="border-t border-accents-2">
-							<ul className="py-3">
-								<li className="flex justify-between py-1">
-									<span>Сума</span>
-									<span>{subTotal}</span>
-								</li>
-								{deliver && (
-									<li className="flex justify-between py-1">
-										<span>Вартість доставки</span>
-										<span className="tracking-wide">{deliverPrice}</span>
-									</li>
-								)}
-							</ul>
-							<div className="flex justify-between border-t border-accents-2 py-3 font-bold mb-10">
-								<span>Всього</span>
-								<span>{total}</span>
-							</div>
-						</div>
-						<div className="flex flex-row justify-end">
-							<div className="w-full lg:w-72">
-								{isEmpty ? (
-									<Button href="/" Component="a" width="100%">
-										Хочу ще чогось
-									</Button>
-								) : (
-									<Button
-										onClick={checkout}
-										disabled={!canOrder}
-										Component="a"
-										width="100%"
-									>
-										Замовити
-									</Button>
-								)}
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
+		</>
 	);
 }
 
