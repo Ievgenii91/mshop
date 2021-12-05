@@ -10,6 +10,7 @@ const str_to_sign = (str: string) => {
 const getHashes = (config: string) => {
 	let data = Buffer.from(JSON.stringify(config)).toString('base64');
 	let signature = str_to_sign(LIQPAY_PRIVATE_KEY + data + LIQPAY_PRIVATE_KEY);
+	console.log('hashes', signature);
 	return {
 		data,
 		signature,
